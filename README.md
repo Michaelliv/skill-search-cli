@@ -1,6 +1,6 @@
 # skill-search-cli
 
-CLI tool for searching and managing AI agent skills.
+CLI tool for searching locally installed AI agent skills from the [skills.sh](https://skills.sh) ecosystem.
 
 ## Installation
 
