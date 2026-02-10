@@ -2,12 +2,21 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { getAllLocalSkills, searchLocalSkills, getSkillsForAgent } from "./local-search.ts";
 import { searchRemoteSkills } from "./remote-search.ts";
 import { onboard } from "./commands/onboard.ts";
 import type { SearchResult, SearchOptions, AgentType, LocalSkill, RemoteSkill } from "./types.ts";
 
-const VERSION = "0.0.1";
+// Read version from package.json
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, "../package.json"), "utf-8")
+);
+const VERSION = packageJson.version;
 
 function wrapText(text: string, width: number, indent: string): string[] {
   const words = text.split(" ");
