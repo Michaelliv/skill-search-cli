@@ -45,11 +45,7 @@ Remote Skills (3):
 
 ---
 
-## For Humans
-
-You install once. Your agents use it forever.
-
-### Installation
+## Installation
 
 ```bash
 npm install -g skill-search-cli
@@ -62,110 +58,194 @@ npm install -g skill-search-cli
 skill-search onboard
 ```
 
-This adds instructions to `~/.claude/CLAUDE.md` (or `AGENTS.md` for other agents), teaching them:
-- How to search for skills
-- When to check local vs remote
-- How to list installed skills
-
-That's it! Now your agents can discover skills on their own.
-
-### Quick Start
-
-```bash
-# Search everywhere
-skill-search react
-
-# Search only local skills
-skill-search --local database
-
-# Search only remote (skills.sh registry)
-skill-search --remote vercel --limit 5
-
-# List all installed skills
-skill-search list
-
-# List skills for specific agent
-skill-search list --agent claude-code
-
-# JSON output (for scripts/agents)
-skill-search --json react
-```
+This adds instructions to `~/.claude/CLAUDE.md` (or `AGENTS.md` for other agents).
 
 ---
 
 ## For Agents
 
-**You discover skills. Humans install them.**
+**You discover skills autonomously. Humans approve installations.**
 
-### Find Existing Skills
+### When to Use skill-search
 
-Before suggesting a human install a skill, check if it already exists:
+Use skill-search in these scenarios:
 
+1. **Before suggesting skill installation**
+   - Always check if the skill already exists locally first
+   - Show the human what's available instead of assuming they need to install
+
+2. **When the user asks about capabilities**
+   - "What skills do I have?"
+   - "Do I have a skill for X?"
+   - "Show me skills related to Y"
+
+3. **During task planning**
+   - Check if existing skills can help with the task
+   - Discover relevant skills from the registry for reference
+
+4. **When you encounter a knowledge gap**
+   - Before saying "I don't know how to X", check if there's a skill for it
+   - Example: User asks about Kubernetes → `skill-search --local kubernetes`
+
+### Decision Tree
+
+```
+User needs functionality
+         │
+         ▼
+   ┌─────────────────┐
+   │ Search local    │ skill-search --local <topic>
+   │ skills first    │
+   └────────┬────────┘
+            │
+         ┌──┴──┐
+         │Found│
+         └──┬──┘
+            │
+      ┌─────┴─────┐
+      │           │
+     YES          NO
+      │           │
+      ▼           ▼
+  Use existing   Search remote → skill-search --remote <topic>
+  skill          registry
+                     │
+                     ▼
+                 Show options
+                 to human
+```
+
+### Search Patterns
+
+**Search local first (most common):**
 ```bash
-# Search local skills
-skill-search --local "<topic>"
-
-# Examples
+# Before suggesting installation
 skill-search --local "docker"
-skill-search --local "kubernetes"
 skill-search --local "testing"
+skill-search --local "api"
+
+# Check related skills
+skill-search --local "kubernetes deployment"
 ```
 
-### Discover New Skills
-
-Browse the remote registry to find relevant skills:
-
+**Search remote for discovery:**
 ```bash
-# Search remote skills
-skill-search --remote "<topic>"
-
-# Limit results
+# Find popular skills
 skill-search --remote "vercel" --limit 5
+skill-search --remote "react best practices"
+
+# Research what's available
+skill-search --remote "python" --limit 10
 ```
 
-### List All Skills
-
+**List for inventory:**
 ```bash
-# All installed skills
+# Show everything installed
 skill-search list
 
-# Skills for specific agent
+# Check specific agent
 skill-search list --agent claude-code
 ```
 
-### Output Format
+### Reading the Output
 
-**Pretty (default):**
+**Local skills show:**
+- ✅ Name and full file path
+- ✅ Which agent it belongs to
+- ✅ Full description
+- ✅ You can reference this skill directly
+
+**Remote skills show:**
+- 📦 Name and source repository
+- 📊 Installation popularity (social proof)
+- 📝 Description (if available)
+- ⚠️ Requires human to install via `npx skills add <id>`
+
+### Example Workflows
+
+**Scenario 1: User asks "Can you help me with Docker?"**
+
+```bash
+# Step 1: Check local skills
+$ skill-search --local "docker"
+
+# Result: Found docker-best-practices skill
+# Action: Use the existing skill, don't suggest installation
 ```
-Local Skills (2):
-  skill-name (~/.claude/skills/skill-name/SKILL.md) [Agent Name]
-    Skill description wraps nicely at 90 characters with proper indentation for
-    continuation lines.
 
-Remote Skills (3):
-  skill-name                               owner/repo
-    Skill description here  1,234 installs
+**Scenario 2: User says "I need help with Stripe API"**
+
+```bash
+# Step 1: Check local
+$ skill-search --local "stripe"
+# Result: No local skills found
+
+# Step 2: Check remote
+$ skill-search --remote "stripe" --limit 3
+# Result: Shows stripe-integration skill from registry
+
+# Action: Inform user about available skill:
+# "I found a 'stripe-integration' skill in the registry (12,000 installs).
+#  Would you like to install it? Run: npx skills add owner/repo/stripe-integration"
 ```
 
-**JSON (--json flag):**
+**Scenario 3: User asks "What skills do I have?"**
+
+```bash
+$ skill-search list
+
+# Show organized output of all installed skills
+# Group by agent if multiple agents detected
+```
+
+### Parsing JSON Output
+
+Use `--json` for programmatic access:
+
+```bash
+skill-search --json "react"
+```
+
+Returns:
 ```json
 {
   "local": [{
-    "name": "skill-name",
-    "description": "...",
-    "path": "~/.claude/skills/skill-name/SKILL.md",
+    "name": "react-patterns",
+    "description": "React best practices...",
+    "path": "~/.claude/skills/react-patterns/SKILL.md",
     "agent": "Claude Code",
     "internal": false
   }],
   "remote": [{
-    "id": "owner/repo/skill-name",
-    "name": "skill-name",
-    "source": "owner/repo",
-    "installs": 1234,
-    "description": "..."
+    "id": "vercel-labs/agent-skills/react-best-practices",
+    "name": "react-best-practices",
+    "source": "vercel-labs/agent-skills",
+    "installs": 115410,
+    "description": "React patterns from Vercel"
   }]
 }
 ```
+
+**Parse in your workflow:**
+- Check `local.length > 0` to see if skill exists
+- Use `path` to reference the skill file
+- Sort `remote` by `installs` for popularity
+- Show top 3 remote results to avoid overwhelming user
+
+### Best Practices
+
+**DO:**
+- ✅ Check local skills before suggesting installations
+- ✅ Show skill paths so humans can inspect them
+- ✅ Limit remote results (`--limit 5`) to avoid information overload
+- ✅ Explain why you're suggesting a particular skill
+- ✅ Use `--json` in scripts/automated workflows
+
+**DON'T:**
+- ❌ Assume a skill needs to be installed without checking local first
+- ❌ Return 100+ remote skills without filtering
+- ❌ Install skills without user permission (you can't anyway)
+- ❌ Skip skill-search when the user explicitly asks about skills
 
 ---
 
